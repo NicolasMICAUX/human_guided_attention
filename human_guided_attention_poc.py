@@ -162,10 +162,10 @@ if __name__ == "__main__":
     # Parse arguments
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nb_train_samples', type=int, default=10)
+    parser.add_argument('--nb_train_samples', type=int, default=1000)
     parser.add_argument('--mode', type=str, default='normal')
-    parser.add_argument('--batch_size', type=int, default=2)
-    parser.add_argument('--max_seq_length', type=int, default=3)
+    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--max_seq_length', type=int, default=200)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-5)
 
@@ -229,16 +229,22 @@ if __name__ == "__main__":
 
     with wandb.init(project='human_guided_attention', entity="alexandrerfst", group=config['mode'], config=config,
                     job_type='train', tags=[config['mode']], name=f"{config['mode']}{config['nb_train_samples']}"):  # notes=...
-        trainer = CustomLossTrainer(  # todo
-            model=model,  # the instantiated 🤗 Transformers model to be trained
-            args=training_args,  # training arguments, defined above
-            train_dataset=dataset["train"],  # training dataset
-            eval_dataset=dataset["test"],  # evaluation dataset
-            # callbacks=[WandbCallback()],  # redundant with report_to="wandb"
-            # as much metrics as possible
-            compute_metrics=compute_metrics,
-        )
-        trainer.train()
+        if config['mode'] == 'normal':
+            trainer = CustomLossTrainer(
+                model=model,  # the instantiated 🤗 Transformers model to be trained
+                args=training_args,  # training arguments, defined above
+                train_dataset=dataset["train"],  # training dataset
+                eval_dataset=dataset["test"],  # evaluation dataset
+                # callbacks=[WandbCallback()],  # redundant with report_to="wandb"
+                compute_metrics=compute_metrics,
+            )
+        else:  # 'baseline' or 'theoretical_max'
+            trainer = Trainer(
+                model=model,  # the instantiated 🤗 Transformers model to be trained
+                args=training_args,  # training arguments, defined above
+                train_dataset=dataset['train'],  # training dataset
+                eval_dataset=dataset['test'],  # evaluation dataset
+                compute_metrics=compute_metrics,
+            )
 
-        # evaluate the model
-        # trainer.evaluate()
+        trainer.train()

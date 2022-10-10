@@ -78,12 +78,22 @@ def gen_synthetic_data(n: int = 1_000, p: float = 0.5, max_seq_length: int = 200
 
 
 if __name__ == "__main__":
-    config = {
-        'nb_train_samples': 1_000,
-        'mode': 'baseline',  # 'normal' or 'baseline' or 'theorical_max'
-        'batch_size': 16,
-        'max_seq_length': 200,
-    }
+    # Parse arguments
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--nb_train_samples', type=int, default=10_000)
+    parser.add_argument('--mode', type=str, default='baseline')
+    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--max_seq_length', type=int, default=200)
+
+    config = parser.parse_args()
+
+    # config = {
+    #     'nb_train_samples': 10_000,
+    #     'mode': 'baseline',  # 'normal' or 'baseline' or 'theorical_max'
+    #     'batch_size': 16,
+    #     'max_seq_length': 200,
+    # }
 
     texts, labels, masks = gen_synthetic_data(n=config['nb_train_samples'], mode=config['mode'],
                                               max_seq_length=config['max_seq_length'])
@@ -122,7 +132,7 @@ if __name__ == "__main__":
 
     training_args = TrainingArguments(
         output_dir="./results",  # output directory
-        num_train_epochs=3,  # total number of training epochs
+        num_train_epochs=10,  # total number of training epochs
         per_device_train_batch_size=config['batch_size'],  # batch size per device during training
         per_device_eval_batch_size=64,  # batch size for evaluation
         warmup_steps=500,  # number of warmup steps for learning rate scheduler

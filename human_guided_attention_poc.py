@@ -81,7 +81,7 @@ if __name__ == "__main__":
     config = {
         'nb_train_samples': 1_000,
         'mode': 'baseline',  # 'normal' or 'baseline' or 'theorical_max'
-        'batch_size': 32,
+        'batch_size': 16,
         'max_seq_length': 200,
     }
 

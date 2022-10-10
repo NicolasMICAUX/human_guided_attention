@@ -142,10 +142,10 @@ if __name__ == "__main__":
     # Parse arguments
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nb_train_samples', type=int, default=10)  # todo
-    parser.add_argument('--mode', type=str, default='baseline')
-    parser.add_argument('--batch_size', type=int, default=1)  # todo
-    parser.add_argument('--max_seq_length', type=int, default=3)  # todo
+    parser.add_argument('--nb_train_samples', type=int, default=1000)
+    parser.add_argument('--mode', type=str, default='normal')
+    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--max_seq_length', type=int, default=256)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-5)
 

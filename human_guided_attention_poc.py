@@ -88,6 +88,7 @@ class CustomLossTrainer(Trainer):
     def __init__(self, phi: float = 1.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.phi = phi
+        self.attention_loss_f = torch.nn.MSELoss()  # torch.nn.BCELoss()
 
     def compute_loss(self, model: AlbertForSequenceClassification, inputs, return_outputs=False):
         """
@@ -135,7 +136,7 @@ class CustomLossTrainer(Trainer):
         attention_alphas = outputs.attentions[0]  # shape (batch_size, num_heads, sequence_length, sequence_length)
 
         # MSE Loss
-        loss += self.phi * torch.nn.MSELoss()(attention_alphas, tokenized_masks.unsqueeze(1).unsqueeze(1).float())
+        loss += self.phi * self.attention_loss_f(attention_alphas, tokenized_masks.unsqueeze(1).unsqueeze(1).float())
         return (loss, outputs) if return_outputs else loss
 
 

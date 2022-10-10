@@ -85,8 +85,9 @@ class CustomLossTrainer(Trainer):
     """
 
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, phi: float = 1.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.phi = phi
 
     def compute_loss(self, model: AlbertForSequenceClassification, inputs, return_outputs=False):
         """
@@ -134,7 +135,7 @@ class CustomLossTrainer(Trainer):
         attention_alphas = outputs.attentions[0]  # shape (batch_size, num_heads, sequence_length, sequence_length)
 
         # MSE Loss
-        loss += torch.nn.MSELoss()(attention_alphas, tokenized_masks.unsqueeze(1).unsqueeze(1).float())
+        loss += self.phi * torch.nn.MSELoss()(attention_alphas, tokenized_masks.unsqueeze(1).unsqueeze(1).float())
         return (loss, outputs) if return_outputs else loss
 
 
@@ -168,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_seq_length', type=int, default=200)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--phi', type=float, default=1.0)
 
     # to dict
     config = parser.parse_args()
@@ -231,6 +233,7 @@ if __name__ == "__main__":
                     job_type='train', tags=[config['mode']], name=f"{config['mode']}{config['nb_train_samples']}"):  # notes=...
         if config['mode'] == 'normal':
             trainer = CustomLossTrainer(
+                phi=config['phi'],  # weight of the attention loss
                 model=model,  # the instantiated 🤗 Transformers model to be trained
                 args=training_args,  # training arguments, defined above
                 train_dataset=dataset["train"],  # training dataset

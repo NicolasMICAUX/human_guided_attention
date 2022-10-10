@@ -3,12 +3,14 @@ from typing import Dict
 
 import torch
 from datasets import Dataset
-# load imdb
-from datasets import load_dataset
 from essential_generators import DocumentGenerator
 from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score, cohen_kappa_score, \
     matthews_corrcoef
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, AlbertForSequenceClassification
+from transformers import Trainer, TrainingArguments
+from transformers.modeling_utils import unwrap_model
+from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+
 import wandb
 
 
@@ -79,14 +81,71 @@ def gen_synthetic_data(n: int = 1_000, p: float = 0.5, max_seq_length: int = 200
     return texts, labels, masks
 
 
+class CustomLossTrainer(Trainer):
+    """
+
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def compute_loss(self, model: AlbertForSequenceClassification, inputs, return_outputs=False):
+        """
+
+        :param model:
+        :param inputs:
+        :param return_outputs: (loss, outputs) if return_outputs else loss
+        :return:
+        """
+        tokenized_masks = inputs['tokenized_masks']  # (batch_size, sequence_length)
+        # remove `tokenized_masks` from inputs
+        del inputs['tokenized_masks']
+
+        # ******** CODE FROM super().compute_loss() ********
+        if self.label_smoother is not None and "labels" in inputs:
+            labels = inputs.pop("labels")
+        else:
+            labels = None
+
+        outputs = model(**inputs, output_attentions=True)  # ONLY THIS LINE IS DIFFERENT
+
+        # Save past state if it exists
+        # this needs to be fixed and made cleaner later.
+        if self.args.past_index >= 0:
+            self._past = outputs[self.args.past_index]
+
+        if labels is not None:
+            if unwrap_model(model)._get_name() in MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.values():
+                loss = self.label_smoother(outputs, labels, shift_labels=True)
+            else:
+                loss = self.label_smoother(outputs, labels)
+        else:
+            if isinstance(outputs, dict) and "loss" not in outputs:
+                raise ValueError(
+                    "The model did not return a loss from the inputs, only the following keys: "
+                    f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
+                )
+            # We don't use .loss here since the model may return tuples instead of ModelOutput.
+            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+        # ************************************************************
+
+        # `outputs.attentions` is a tuple of 24 tensors for 24 layers of shape (batch_size, num_heads, sequence_length, sequence_length)
+        # We want to force the attention to only consider some given words in the sequence, given by input[`tokenized_masks`]
+        # So get attention for the first layer.
+        attention_alphas = outputs.attentions[0]  # shape (batch_size, num_heads, sequence_length, sequence_length)
+
+        # MSE Loss
+        loss += torch.nn.MSELoss()(attention_alphas, tokenized_masks.unsqueeze(1).unsqueeze(1).float())
+        return (loss, outputs) if return_outputs else loss
+
+
 if __name__ == "__main__":
     # Parse arguments
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nb_train_samples', type=int, default=10_000)
+    parser.add_argument('--nb_train_samples', type=int, default=10)  # todo
     parser.add_argument('--mode', type=str, default='baseline')
-    parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--max_seq_length', type=int, default=200)
+    parser.add_argument('--batch_size', type=int, default=1)  # todo
+    parser.add_argument('--max_seq_length', type=int, default=3)  # todo
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-5)
 
@@ -127,8 +186,6 @@ if __name__ == "__main__":
     dataset = Dataset.from_dict(data).train_test_split(test_size=0.2)
 
     # train the model
-    from transformers import Trainer, TrainingArguments
-
     training_args = TrainingArguments(
         output_dir="./results",  # output directory
         num_train_epochs=config['epochs'],  # total number of training epochs
@@ -146,11 +203,13 @@ if __name__ == "__main__":
         report_to="wandb",
         greater_is_better=False,
         # run_name="human-guided-attention",
+        remove_unused_columns=False,  # Prevents 'tokenized_masks' from being removed (because not used in the base model)
+        # label_names=['label'],  # it's the default
     )
 
     with wandb.init(project='human_guided_attention', entity="alexandrerfst", group=config['mode'], config=config,
                     job_type='train', tags=[config['mode']], name=f"{config['mode']}{config['nb_train_samples']}"):  # notes=...
-        trainer = Trainer(
+        trainer = CustomLossTrainer(  # todo
             model=model,  # the instantiated 🤗 Transformers model to be trained
             args=training_args,  # training arguments, defined above
             train_dataset=dataset["train"],  # training dataset

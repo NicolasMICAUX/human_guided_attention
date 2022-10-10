@@ -149,7 +149,7 @@ if __name__ == "__main__":
     )
 
     with wandb.init(project='human_guided_attention', entity="alexandrerfst", group=config['mode'], config=config,
-                    job_type='train', tags=[config['mode']], name=f"{config['mode']}", magic=False):  # notes=...
+                    job_type='train', tags=[config['mode']], name=f"{config['mode']}{config['nb_train_samples']}"):  # notes=...
         trainer = Trainer(
             model=model,  # the instantiated 🤗 Transformers model to be trained
             args=training_args,  # training arguments, defined above

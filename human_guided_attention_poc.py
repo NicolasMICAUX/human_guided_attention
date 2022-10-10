@@ -85,16 +85,12 @@ if __name__ == "__main__":
     parser.add_argument('--mode', type=str, default='baseline')
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--max_seq_length', type=int, default=200)
+    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--lr', type=float, default=5e-5)
 
     # to dict
     config = parser.parse_args()
     config = vars(config)
-
-    # config = {
-    #     'nb_train_samples': 10_000,
-    #     'mode': 'baseline',  # 'normal' or 'baseline' or 'theorical_max'
-    #     'batch_size': 16,
-    #     'max_seq_length': 200,
     # }
     texts, labels, masks = gen_synthetic_data(n=config['nb_train_samples'], mode=config['mode'],
                                               max_seq_length=config['max_seq_length'])
@@ -137,6 +133,7 @@ if __name__ == "__main__":
         per_device_train_batch_size=config['batch_size'],  # batch size per device during training
         per_device_eval_batch_size=64,  # batch size for evaluation
         warmup_steps=500,  # number of warmup steps for learning rate scheduler
+        learning_rate=config['learning_rate'],
         weight_decay=0.01,  # strength of weight decay
         logging_dir='./logs',  # directory for storing logs
         logging_steps=10,  # log every 10 steps

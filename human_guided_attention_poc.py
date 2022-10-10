@@ -138,14 +138,34 @@ class CustomLossTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
+def compute_metrics(p):
+    """
+    
+    :param predictions: 
+    :return: 
+    """
+    p_argmax = p.predictions[0].argmax(-1)
+    metrics = {
+        "accuracy": (p_argmax == p.label_ids).mean(),
+        "f1": f1_score(p.label_ids, p_argmax),
+        "precision": precision_score(p.label_ids, p_argmax),
+        "recall": recall_score(p.label_ids, p_argmax),
+        'roc_auc': roc_auc_score(p.label_ids, p_argmax),
+        'cohen_kappa': cohen_kappa_score(p.label_ids, p_argmax),
+        'matthews_corrcoef': matthews_corrcoef(p.label_ids, p_argmax),
+        # 'confusion_matrix': confusion_matrix(p.label_ids, p_argmax),  # 4 coeffs : TN, FP, FN, TP
+    }
+    return metrics
+    
+
 if __name__ == "__main__":
     # Parse arguments
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nb_train_samples', type=int, default=1000)
+    parser.add_argument('--nb_train_samples', type=int, default=10)
     parser.add_argument('--mode', type=str, default='normal')
-    parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--max_seq_length', type=int, default=256)
+    parser.add_argument('--batch_size', type=int, default=2)
+    parser.add_argument('--max_seq_length', type=int, default=3)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-5)
 
@@ -216,16 +236,7 @@ if __name__ == "__main__":
             eval_dataset=dataset["test"],  # evaluation dataset
             # callbacks=[WandbCallback()],  # redundant with report_to="wandb"
             # as much metrics as possible
-            compute_metrics=lambda p: {
-                "accuracy": (p.predictions.argmax(-1) == p.label_ids).mean(),
-                "f1": f1_score(p.label_ids, p.predictions.argmax(-1)),
-                "precision": precision_score(p.label_ids, p.predictions.argmax(-1)),
-                "recall": recall_score(p.label_ids, p.predictions.argmax(-1)),
-                'roc_auc': roc_auc_score(p.label_ids, p.predictions.argmax(-1)),
-                'cohen_kappa': cohen_kappa_score(p.label_ids, p.predictions.argmax(-1)),
-                'matthews_corrcoef': matthews_corrcoef(p.label_ids, p.predictions.argmax(-1)),
-                # 'confusion_matrix': confusion_matrix(p.label_ids, p.predictions.argmax(-1)),  # 4 coeffs : TN, FP, FN, TP
-            }
+            compute_metrics=compute_metrics,
         )
         trainer.train()
 

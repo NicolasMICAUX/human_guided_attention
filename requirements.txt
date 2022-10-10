@@ -1,0 +1,9 @@
+requests
+pandas
+beautifulsoup4
+tqdm
+wandb
+torch
+transformers
+datasets
+scikit-learn

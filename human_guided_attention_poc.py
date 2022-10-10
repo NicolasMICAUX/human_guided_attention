@@ -1,4 +1,6 @@
 """Human-guided attention in Transformers."""
+from typing import Dict
+
 import torch
 from datasets import Dataset
 # load imdb
@@ -90,7 +92,7 @@ if __name__ == "__main__":
 
     # to dict
     config = parser.parse_args()
-    config = vars(config)
+    config: Dict = vars(config)
     # }
     texts, labels, masks = gen_synthetic_data(n=config['nb_train_samples'], mode=config['mode'],
                                               max_seq_length=config['max_seq_length'])
@@ -147,7 +149,7 @@ if __name__ == "__main__":
     )
 
     with wandb.init(project='human_guided_attention', entity="alexandrerfst", group=config['mode'], config=config,
-                    job_type='train', tags=[config['mode']], name=f"{config['mode']}", magic=True):  # notes=...
+                    job_type='train', tags=[config['mode']], name=f"{config['mode']}", magic=False):  # notes=...
         trainer = Trainer(
             model=model,  # the instantiated 🤗 Transformers model to be trained
             args=training_args,  # training arguments, defined above
